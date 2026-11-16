@@ -5887,24 +5887,36 @@ const cornerVisited = k => !!(S.visited && S.visited[k]);
 const cornersLeft = () => ['start','pass'].filter(k=>!cornerVisited(k)).length;
 const boardMode = () => (foldedCount() || cornersLeft()) ? 'roll' : 'done';   // v7: no retry mode
 
-/* ── The dice rule (v5 round 3) ──
+/* ── The dice rule (v5 round 3; v17 (ab): both corners in the first lap) ──
    The token walks every cell, one step at a time — START and the Taiwan PASS corner included —
-   like any board game. The trick is in the number: the game first picks which still-folded tile
-   the player lands on, and the dice then SHOW the real clockwise distance to it. So "3+4" means
-   seven cells walked, ending on a tile you haven't opened.
+   like any board game. The trick is in the number: the game first picks which target cell the
+   player lands on, and the dice then SHOW the real clockwise distance to it. So "3+4" means seven
+   cells walked, ending on a target: a space not yet opened or a corner not yet visited.
 
-   planRoll(folded, pos) → {target, dist, a, b}. `folded` is a 14-long array of booleans (corners
-   and opened tiles false). Two dice can only show 2..12, so a candidate must sit 2..12 cells ahead
-   (never 1 or 13). Of those, only candidates from which the rest of the board can still be
-   finished are offered — a memoised search over (position, folded set), at most 14 × 2^14 states,
-   so the board can never strand the last tile 1 or 13 cells away. The pick among the feasible
-   candidates is weighted by real 2d6 odds of its distance (round 4), and the distance is split uniformly among the valid (a,b) pairs.
-   If no candidate is feasible (unreachable from a fresh game; possible only from a hand-edited or
-   legacy save), it falls back to the nearest folded tile, shows the distance clamped to 2..12,
-   and logs it (window.__planFallbacks). */
-const PLAN_MEMO = new Map();
+   planRoll(folded, pos, rng, corners) → {target, dist, a, b}. `folded` is a 14-long array of booleans,
+   true for every target (folded spaces + the corners not yet visited; the token starting on START is
+   not a visit). Two dice can only show 2..12, so a candidate must sit 2..12 cells ahead (never 1 or 13).
+   v17 (ab), the corner gate: a roll may LAND on an unvisited corner but never walk PAST one — no cell
+   strictly between the start and the landing may be a corner (`corners`, default START_CELL and
+   PASS_CELL) that is still a target. From a fresh game the token therefore stops on 08 (Taiwan PASS)
+   before it can go further, and on 01 (START) before it can begin a second lap: both corner cards
+   come in the first lap. Once a corner is visited it blocks nothing, so later laps work as before. (In
+   the first lap the token never stops on the cell just before an unvisited corner, 07 or 14, since a 1
+   cannot be rolled; those are picked up in a later lap.) The choice, in tiers:
+   (a) candidates whose path is clear of unvisited corners AND from which the rest of the board can still
+       be finished under the same gate — gatedFeasible(), a memoised search over (position, target set),
+       at most 14 × 2^14 states, its own memo. From a fresh game this tier never runs dry (plan.cjs
+       checks every reachable state exhaustively), so a fresh game takes exactly 14 rolls.
+   (b) only for a board saved under the old planner (e.g. standing on 07 or 14 with the next corner
+       unvisited): the old un-gated feasible candidates (planFeasible()), preferring those from which the
+       gate can be kept again; counted in window.__planUngated (not a fallback).
+   (c) nothing feasible at all (a hand-edited save): the nearest target, the distance shown clamped to
+       2..12, logged in window.__planFallbacks.
+   In (a) and (b) the pick is weighted by real 2d6 odds of its distance (round 4), and the distance is
+   split uniformly among the valid (a,b) pairs. */
+const PLAN_MEMO = new Map(), GATED_MEMO = new Map();
 const DICE_WAYS = [0,0,1,2,3,4,5,6,5,4,3,2,1];   // ways two dice make each sum 2..12
-function planFeasible(pos, mask, n){            // can every folded cell in `mask` still be landed on?
+function planFeasible(pos, mask, n){            // can every folded cell in `mask` still be landed on? (no gate)
   if (!mask) return true;
   const key = pos * 16384 + mask;
   if (PLAN_MEMO.has(key)) return PLAN_MEMO.get(key);
@@ -5913,25 +5925,50 @@ function planFeasible(pos, mask, n){            // can every folded cell in `mas
   PLAN_MEMO.set(key, ok);
   return ok;
 }
+/* v17 (ab): the corner gate — `block` = the corner cells that are still targets; the cells strictly between pos and pos+d must avoid them */
+const cornerMaskOf = (corners, n) => (corners || []).reduce((m, c) => (Number.isInteger(c) && c >= 0 && c < n) ? (m | (1<<c)) : m, 0);
+function pathClear(pos, d, n, block){
+  for (let k=1; k<d; k++) if (block & (1<<((pos+k)%n))) return false;
+  return true;
+}
+function gatedFeasible(pos, mask, n, cmask){     // can every target in `mask` still be landed on without walking past an unvisited corner?
+  if (!mask) return true;
+  const key = ((cmask * 32 + n) * 32 + pos) * 16384 + mask;
+  if (GATED_MEMO.has(key)) return GATED_MEMO.get(key);
+  let ok = false;
+  for (let d=2; d<=12 && !ok; d++){ const c=(pos+d)%n; if ((mask & (1<<c)) && pathClear(pos, d, n, mask & cmask)) ok = gatedFeasible(c, mask & ~(1<<c), n, cmask); }
+  GATED_MEMO.set(key, ok);
+  return ok;
+}
 function splitDice(dist, rng){
   const pairs = []; for (let a=Math.max(1, dist-6); a<=Math.min(6, dist-1); a++) pairs.push([a, dist-a]);
   return pairs[Math.floor(rng()*pairs.length)];
 }
-function planRoll(folded, pos, rng=Math.random){
+/* weighted by real 2d6 odds of each distance (7 six times as likely as 2 or 12), so the sums read like ordinary dice */
+function pickByOdds(cand, rng){
+  let r = rng() * cand.reduce((s,x)=>s+DICE_WAYS[x.d], 0), pick = cand[cand.length-1];
+  for (const x of cand){ r -= DICE_WAYS[x.d]; if (r < 0){ pick = x; break; } }
+  return pick;
+}
+function planRoll(folded, pos, rng=Math.random, corners=[START_CELL, PASS_CELL]){
   const n = folded.length; let mask = 0;
   folded.forEach((f,c)=>{ if (f) mask |= 1<<c; });
   if (!mask) return null;
+  const cmask = cornerMaskOf(corners, n), block = mask & cmask;
+  const show = pick => { const [a, b] = splitDice(pick.d, rng); return {target:pick.c, dist:pick.d, a, b}; };
+  /* (a) gated: lands without walking past an unvisited corner, and the rest can be finished the same way */
   const cand = [];
-  for (let d=2; d<=12; d++){ const c=(pos+d)%n; if ((mask & (1<<c)) && planFeasible(c, mask & ~(1<<c), n)) cand.push({c, d}); }
-  if (cand.length){
-    /* weighted by real 2d6 odds of each distance (7 six times as likely as 2 or 12), so the sums
-       read like ordinary dice; feasibility above still guarantees the board can be finished */
-    let r = rng() * cand.reduce((s,x)=>s+DICE_WAYS[x.d], 0), pick = cand[cand.length-1];
-    for (const x of cand){ r -= DICE_WAYS[x.d]; if (r < 0){ pick = x; break; } }
-    const [a, b] = splitDice(pick.d, rng);
-    return {target:pick.c, dist:pick.d, a, b};
+  for (let d=2; d<=12; d++){ const c=(pos+d)%n; if ((mask & (1<<c)) && pathClear(pos, d, n, block) && gatedFeasible(c, mask & ~(1<<c), n, cmask)) cand.push({c, d}); }
+  if (cand.length) return show(pickByOdds(cand, rng));
+  /* (b) a board saved under the old planner: the old feasible landings, those that make the gate possible again first */
+  const old = [];
+  for (let d=2; d<=12; d++){ const c=(pos+d)%n; if ((mask & (1<<c)) && planFeasible(c, mask & ~(1<<c), n)) old.push({c, d, back: gatedFeasible(c, mask & ~(1<<c), n, cmask)}); }
+  if (old.length){
+    const back = old.filter(x=>x.back);
+    window.__planUngated = (window.__planUngated||0) + 1;
+    return Object.assign(show(pickByOdds(back.length ? back : old, rng)), {ungated:true});
   }
-  /* fallback — should never fire from a real game; tests count it */
+  /* (c) fallback — should never fire from a real game; tests count it */
   let best = null;
   for (let d=1; d<n; d++){ const c=(pos+d)%n; if (mask & (1<<c)) { best = {c, d}; break; } }
   const shown = Math.min(12, Math.max(2, best.d)), [a, b] = splitDice(shown, rng);
