@@ -5865,8 +5865,14 @@ const TPL_ARGS_V10 = {
 let S = {name:'', email:'', token:null, airline:null, pos:START_CELL, tiles:{}, picks:{}, wayOffered:false, visited:{start:false, pass:false}, rolls:0, passLine:0, chapter:null, started:false, atAirport:false};
 /* Saved progress is namespaced by campaign (and by version, so a v4 passport is never read as v5). */
 const SKEY = 'ttaRally17:' + CONFIG.campaign;   // v17: the launch build (Pacific window, targets, preview): separate slot
-function save(){ try{ localStorage.setItem(SKEY, JSON.stringify(S)); }catch(e){} }
-function load(){ try{ const d=JSON.parse(localStorage.getItem(SKEY)); if(d && d.started && d.tiles){ S=Object.assign(S, d); S.picks=S.picks||{}; S.visited=S.visited||{start:false, pass:false};
+/* v17 (zz): the saved copy holds no last name, phone, ZIP, opt-in, gclid or duplicate first name (used only by the register call at Check In;
+   kept in memory for the visit); a save made before (zz) is scrubbed when it is loaded */
+const PRIVATE_KEYS_V17 = ['first','last','phone','zip','optin','gclid'];
+const savedCopyV17 = o => { const c=Object.assign({}, o); PRIVATE_KEYS_V17.forEach(k=>{ delete c[k]; }); return c; };
+function save(){ try{ localStorage.setItem(SKEY, JSON.stringify(savedCopyV17(S))); }catch(e){} }
+function load(){ try{ const d=JSON.parse(localStorage.getItem(SKEY));
+    if(d && typeof d==='object' && PRIVATE_KEYS_V17.some(k=>k in d)){ try{ localStorage.setItem(SKEY, JSON.stringify(savedCopyV17(d))); }catch(e){} }   /* v17 (zz): scrub an older save */
+    if(d && d.started && d.tiles){ S=Object.assign(S, savedCopyV17(d)); if(!S.first && S.name) S.first=S.name;   /* v17 (zz): packState()'s first, from the saved name */ S.picks=S.picks||{}; S.visited=S.visited||{start:false, pass:false};
     Object.keys(S.picks).forEach(k=>{ const t=TILES_V5.find(x=>x.id===k); if(!t || (S.picks[k] && !pickOf(t, S.picks[k]))){ console.warn('[load] dropping a stale pick', k, S.picks[k]); delete S.picks[k]; } });   /* v12: a story moved or renamed by a later build; v12 (e): stale = not a story of the space and not its cover place (a skip, null, is kept) */ } }catch(e){} }
 const blankTile = () => ({seen:[false,false,false], right:[false,false,false], state:'folded'});
 const TS = t => S.tiles[t.id] || (S.tiles[t.id] = blankTile());
