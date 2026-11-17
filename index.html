@@ -1706,6 +1706,47 @@ body:not(.playing) .wrap{max-width:none;}
   .lp .ck-resume + .ck-fine{margin-top:clamp(2px,.6vh,6px);}
 }
 </style>
+<style>
+/* v17 (ac): the airline lock-ups — wordmark centres on one line, Iven's proportions, the logos filling their boxes (numbers derived by build.cjs
+   from assets/logos/geometry.json: --u = China Airlines' file height, --k = height in u, --a = wordmark centre from the file's top in u,
+   --t = the file's top from a box's centre in u when the block of three is centred in the box). The three are always in the AIRLINES order. */
+#lpPrizeLogos img:nth-child(1), #airlines .tok:nth-child(1) .al-logo, #plCal img, .modal.corner-start .al-link[data-al="cal"] img{--k:1;--a:0.4069;--t:-0.3511;}
+#lpPrizeLogos img:nth-child(2), #airlines .tok:nth-child(2) .al-logo, #plEva img, .modal.corner-start .al-link[data-al="eva"] img{--k:1.2569;--a:0.5257;--t:-0.4699;}
+#lpPrizeLogos img:nth-child(3), #airlines .tok:nth-child(3) .al-logo, #plJx img, .modal.corner-start .al-link[data-al="jx"] img{--k:1.3692;--a:0.8501;--t:-0.7943;}
+#airlines .tok .al-logo, .pl-mark img, .modal.corner-start .al-link img{position:absolute;left:50%;top:calc(50% + var(--u) * var(--t));transform:translateX(-50%);height:calc(var(--u) * var(--k));width:auto;max-width:none;max-height:none;margin:0;}
+/* the landing's "Grand prizes by" strip, desktop: logos on the label's line, the label centred on the wordmark line; size by window height */
+@media(min-width:900px){
+  .checkin.lp .lp-prizes{--u:clamp(25px, calc(6vh - 18px), 36px);align-items:flex-start;}
+  .checkin.lp .lp-prizes .t{line-height:14px;margin-top:calc(var(--u) * 0.8501 - 7px);}
+  .checkin.lp .lp-pl{align-items:flex-start;gap:20px;}
+  .checkin.lp .lp-pl img{height:calc(var(--u) * var(--k));width:auto;margin-top:calc(var(--u) * (0.8501 - var(--a)));}
+}
+@media(min-width:900px) and (min-height:801px){ .checkin.lp .lp-shot > *{--B:min(490px,72cqw,calc(153cqh + 61px));} }   /* the board mock ≤ 490 px: its tilted corner stays under the strip */
+@media(min-width:900px) and (max-height:760px){ .checkin.lp .lp-shot{min-height:80px;} }   /* 1280×720: the screenshot block gives 16 px */
+/* phones: the strip in the top band under the headline, as wide as the band; the label 7 px above the higher of China Airlines / EVA Air
+   (it may sit beside STARLUX's emblem, which is at the far right) */
+@media(max-width:899px){
+  .lp .lp-prizes.lp-dt{--u:min(32px, calc((100vw - 64px) / 10.5001));display:flex;flex-direction:column;align-items:center;gap:0;margin:14px 0 calc(9vw - 4px);position:relative;z-index:2;}
+  .lp .lp-prizes .t{font-size:10px;line-height:12px;font-weight:800;letter-spacing:.1em;color:#7A8580;text-transform:uppercase;margin-bottom:calc(7px - var(--u) * 0.3472);position:relative;z-index:1;}
+  .lp .lp-pl{display:flex;align-items:flex-start;justify-content:center;gap:12px;}
+  .lp .lp-pl img{display:block;height:calc(var(--u) * var(--k));width:auto;margin-top:calc(var(--u) * (0.8501 - var(--a)));}
+}
+/* the airline choice buttons: China Airlines' ink 86 % of the button (phones: the button less 2 × 6 px); the button 2.1035 u tall (≥ 50 px) */
+.lp .tokens.airlines{container-type:inline-size;}
+.lp .tokens.airlines .tok{--u:calc((100cqw - 16px) / 3 * .86 / 4.2571);position:relative;padding:0;min-height:max(50px, calc(var(--u) * 2.1035));}
+@media(max-width:899px){ .lp .tokens.airlines .tok{--u:calc(((100cqw - 16px) / 3 - 12px) / 4.2571);} }
+/* the board's partner strip: 150 px boxes (phones 112, short phones 100 × 38) */
+.pl-mark{--u:calc(150px * .86 / 4.2571);position:relative;width:150px;height:calc(var(--u) * 2.1035);padding:0;}
+@media(max-width:620px){ .pl-mark{--u:calc((min(112px, (100vw - 40px) / 3) - 12px) / 4.2571);width:min(112px, calc((100vw - 40px) / 3));height:calc(var(--u) * 2.1035);} }
+@media(max-width:620px) and (max-height:760px){ .pl-mark{--u:min(20.6713px, 18.0651px);width:100px;height:38px;} }
+/* the airport card: the same fill; the block 4 px higher so the "YOUR AIRLINE" tag never touches EVA Air's STAR ALLIANCE line */
+.modal.corner-start .al-links{container-type:inline-size;}
+.modal.corner-start .al-link{--u:calc((100cqw - 16px) / 3 * .86 / 4.2571);height:calc(var(--u) * 2.1035 + 4px);}
+@media(max-width:620px){ .modal.corner-start .al-link{--u:calc(((100cqw - 16px) / 3 - 12px) / 4.2571);height:max(62px, calc(var(--u) * 2.1035 + 4px));} }
+.modal.corner-start .al-link img{top:calc(50% + var(--u) * var(--t) - 4px);}
+/* OhBear's bubble: hidden when it would not fit inside the left column (set by the script under the landing code) */
+.checkin.lp .lp-bubble.lp-bubble-off{visibility:hidden;}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -2315,15 +2356,15 @@ const OB_MARK='img/ccee517b9c.webp';
 const AIRLINES = [
   {id:'cal', name:'China Airlines', emoji:'🌸', cls:'cal', hex:'#CE0E2D',
    plane:'img/092f065650.webp', par:0.5300,
-   logo:'img/c362722d96.webp',
+   logo:'img/636ca59384.webp',
     svg:'<svg viewBox="0 0 64 64"><path d="M6 38 L46 22 C54 19 58 22 56 26 L50 34 L20 44 L10 44 Z" fill="#CE0E2D"/><path d="M38 25 L34 12 L40 12 L48 22 Z" fill="#a30b24"/><path d="M18 41 L14 50 L20 50 L26 40 Z" fill="#a30b24"/><g transform="translate(47,13)"><circle r="6" fill="#fff"/><path d="M0-5 C2-2 2 2 0 5 C-2 2 -2-2 0-5 Z M-4.3-2.5 C-1.5-2 1.5 0 4.3 2.5 M-4.3 2.5 C-1.5 2 1.5-2 4.3-2.5" fill="none" stroke="#CE0E2D" stroke-width="1.5"/></g></svg>'},
   {id:'eva', name:'EVA Air',        emoji:'🌏', cls:'eva', hex:'#00653A',
    plane:'img/47c1b0cdbb.webp', par:0.5100,
-   logo:'img/2218dd6f13.webp',
+   logo:'img/1e2be5cd07.webp',
     svg:'<svg viewBox="0 0 64 64"><path d="M6 38 L46 22 C54 19 58 22 56 26 L50 34 L20 44 L10 44 Z" fill="#00653A"/><path d="M38 25 L34 12 L40 12 L48 22 Z" fill="#F58220"/><path d="M18 41 L14 50 L20 50 L26 40 Z" fill="#F58220"/><circle cx="47" cy="13" r="6" fill="#fff"/><path d="M43 13 A4 4 0 0 1 51 13" fill="none" stroke="#00653A" stroke-width="2.2"/></svg>'},
   {id:'jx',  name:'STARLUX Airlines', emoji:'✦', cls:'jx', hex:'#8D7249',
    plane:'img/17eab0a437.webp', par:0.5300,
-   logo:'img/c6a6afdb50.webp',
+   logo:'img/1a7aeea57f.webp',
     svg:'<svg viewBox="0 0 64 64"><path d="M6 38 L46 22 C54 19 58 22 56 26 L50 34 L20 44 L10 44 Z" fill="#2B2B2B"/><path d="M38 25 L34 12 L40 12 L48 22 Z" fill="#8D7249"/><path d="M18 41 L14 50 L20 50 L26 40 Z" fill="#8D7249"/><path d="M47 7 L48.6 11.4 L53 13 L48.6 14.6 L47 19 L45.4 14.6 L41 13 L45.4 11.4 Z" fill="#C9A96A"/></svg>'}
 ];
 
@@ -4249,7 +4290,7 @@ const PICKS_PROMO_V11 = {
 };
 
 /* v15 (bb): the landing page's game screenshots (desktop board crop, phone screen) — filled by landing-shots.cjs after photo-patch */
-const LANDING_ART_V15 = {dt: 'img/0269e0744f.webp', ph: 'img/0a488ecab8.webp'};
+const LANDING_ART_V15 = {dt: 'img/dc17b768ec.webp', ph: 'img/3e5f7535da.webp'};
 /* v17 (ww): the two gift-prize photos (Iven, 2026-11-15; prize-art.py → assets/prizes/*.webp) */
 const PRIZE_ART_V17 = {kit: {src: 'img/94c0641c31.webp', w: 183, h: 180}, towel: {src: 'img/38fe1401ce.webp', w: 92, h: 180}};
 const PRIZE_TICKET_SVG_V17 = "<svg class=\"pc-ticket\" viewBox=\"0 0 240 124\" role=\"img\" aria-labelledby=\"pcTicketT\" xmlns=\"http://www.w3.org/2000/svg\"><title id=\"pcTicketT\">{alt}</title><g transform=\"rotate(-6 120 62)\"><rect x=\"12\" y=\"24\" width=\"216\" height=\"80\" rx=\"12\" fill=\"#FFF7ED\" stroke=\"#F1D2BC\" stroke-width=\"1.5\"/><path d=\"M12 36a12 12 0 0 1 12-12h192a12 12 0 0 1 12 12v8H12z\" fill=\"#FF5629\"/><text x=\"26\" y=\"39\" fill=\"#fff\" style=\"font:800 10.5px var(--font);letter-spacing:.16em\">ROUND TRIP</text><text x=\"22\" y=\"82\" fill=\"#004740\" style=\"font:600 22px var(--font-disp)\">SFO</text><path d=\"M86 66h20m-5-4.5 5 4.5-5 4.5M106 77H86m5-4.5-5 4.5 5 4.5\" fill=\"none\" stroke=\"#FF5629\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><text x=\"114\" y=\"82\" fill=\"#004740\" style=\"font:600 22px var(--font-disp)\">TPE</text><path d=\"M176 46v56\" stroke=\"#E2B89A\" stroke-width=\"1.5\" stroke-dasharray=\"3 4\"/><circle cx=\"176\" cy=\"24\" r=\"5\" fill=\"#fff\"/><circle cx=\"176\" cy=\"104\" r=\"5\" fill=\"#fff\"/><g transform=\"translate(190 60) scale(1.25)\" fill=\"#004740\"><path d=\"M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z\" transform=\"rotate(90 12 12)\"/></g></g></svg>";
@@ -7396,6 +7437,10 @@ renderBoard();
 initCheckin();
 /* v17 (ss): the build tags — "TEST BUILD" (stage), "PREVIEW · test data" (launch with the preview key) */
 if(CONFIG.testTag || PREVIEW_V17){ const t=document.createElement('div'); t.className='build-tag'+(PREVIEW_V17?' preview':''); t.id='buildTag'; t.textContent=PREVIEW_V17?'PREVIEW · test data':'TEST BUILD'; document.body.appendChild(t); }
+/* v17 (ac): OhBear's bubble is hidden whenever it would not fit inside the landing's left column (tall-narrow desktop windows) */
+(function(){ const b=document.getElementById('lpBubble'), h=document.querySelector('.lp-hero'); if(!b||!h) return;
+  const fit=()=>{ const r=b.getBoundingClientRect(), c=h.getBoundingClientRect(); b.classList.toggle('lp-bubble-off', r.width>0 && (r.right>c.right-4 || r.left<c.left)); };
+  addEventListener('resize', fit); addEventListener('load', fit); try{ if(document.fonts) document.fonts.ready.then(fit); }catch(e){} fit(); })();
 /* v17 (ss): the board's art (cells, corners, map, OhBear, dice …) loads while the player fills in the form, so the board never flashes
    empty after Check In — every image the hidden #game section names (computed backgrounds, the PASS crops, <img>) */
 (function(){ let done=false;
