@@ -1746,6 +1746,8 @@ body:not(.playing) .wrap{max-width:none;}
 .modal.corner-start .al-link img{top:calc(50% + var(--u) * var(--t) - 4px);}
 /* OhBear's bubble: hidden when it would not fit inside the left column (set by the script under the landing code) */
 .checkin.lp .lp-bubble.lp-bubble-off{visibility:hidden;}
+/* v17 (ac-2): the bubble never rises above the screenshot block (3 lines + its padding + 8 px); the guard script hides it if it still meets anything */
+@media(min-width:900px){ .checkin.lp .lp-bubble{bottom:min(calc(min(178px,62%) + 58px), calc(100% - 3.9em - 27px));} }
 </style>
 </head>
 <body>
@@ -7439,7 +7441,10 @@ initCheckin();
 if(CONFIG.testTag || PREVIEW_V17){ const t=document.createElement('div'); t.className='build-tag'+(PREVIEW_V17?' preview':''); t.id='buildTag'; t.textContent=PREVIEW_V17?'PREVIEW · test data':'TEST BUILD'; document.body.appendChild(t); }
 /* v17 (ac): OhBear's bubble is hidden whenever it would not fit inside the landing's left column (tall-narrow desktop windows) */
 (function(){ const b=document.getElementById('lpBubble'), h=document.querySelector('.lp-hero'); if(!b||!h) return;
-  const fit=()=>{ const r=b.getBoundingClientRect(), c=h.getBoundingClientRect(); b.classList.toggle('lp-bubble-off', r.width>0 && (r.right>c.right-4 || r.left<c.left)); };
+  const near=(r,e,m)=>{ if(!e) return false; const o=e.getBoundingClientRect(); return o.width>0 && r.left<o.right+m && r.right>o.left-m && r.top<o.bottom+m && r.bottom>o.top-m; };   /* v17 (ac-2) */
+  const fit=()=>{ const r=b.getBoundingClientRect(), c=h.getBoundingClientRect();
+    const hit=[...document.querySelectorAll('#lpPrizeLogos img, .lp-prizes .t, #lpPrizeRow .lp-pcard, #lpMinor')].some(e=>near(r,e,8)) || ['lpBoard','lpPhone'].some(id=>near(r,document.getElementById(id),0));
+    b.classList.toggle('lp-bubble-off', r.width>0 && (r.right>c.right-4 || r.left<c.left || hit)); };
   addEventListener('resize', fit); addEventListener('load', fit); try{ if(document.fonts) document.fonts.ready.then(fit); }catch(e){} fit(); })();
 /* v17 (ss): the board's art (cells, corners, map, OhBear, dice …) loads while the player fills in the form, so the board never flashes
    empty after Check In — every image the hidden #game section names (computed backgrounds, the PASS crops, <img>) */
