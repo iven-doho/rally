@@ -1928,6 +1928,11 @@ const CONFIG = {
     eva: 'https://www.evaair.com/',
     jx:  'https://www.starlux-airlines.com/'
   },
+  /* v17 (ad): timed overrides of airlineLinks (keys = AIRLINES ids). `until` is exclusive (an ISO time with its zone); from then on the
+     airlineLinks entry applies again. A missing or unparseable `until`, or an empty url, means the normal link. */
+  airlineLinksTimed: {
+    cal: {url: 'https://northamerica.china-airlines.com/2026-black-friday-sale_en/', until: '2026-12-02T00:00:00-08:00'}   /* Iven: the Black Friday sale, through Dec 1 PT */
+  },
   /* v11: the picks card shows the promo code of the airline chosen at check-in. Placeholders until Iven supplies the real
      codes; when url is set the airline's name links to it (a new window). Keys are AIRLINES ids, as airlineLinks. */
   airlinePromo: {
@@ -1936,6 +1941,12 @@ const CONFIG = {
     jx:  {code: 'TBD-JX', url: ''}
   }
 };
+/* v17 (ad): the START card's link for an airline: CONFIG.airlineLinksTimed[id].url while now < its `until`, else CONFIG.airlineLinks[id] */
+function airlineLink(id, now = Date.now()){
+  const t = CONFIG.airlineLinksTimed && CONFIG.airlineLinksTimed[id];
+  if (t && typeof t.url === 'string' && t.url && typeof t.until === 'string') { const u = Date.parse(t.until); if (Number.isFinite(u) && now < u) return t.url; }
+  return (CONFIG.airlineLinks && CONFIG.airlineLinks[id]) || '#';
+}
 /* v17 (ss): the preview switch (launch target only): ?preview=<CONFIG.previewKey> — or the same key kept in this tab's sessionStorage —
    plays before the opening on the '<campaign>-test' campaign (every Sheet / GA4 call, the save slot). Runs before anything reads CONFIG.campaign. */
 const PREVIEW_V17 = (() => {
@@ -6756,7 +6767,7 @@ function cornerCard(c, land){
   const which=cornerKey(c), C=COPY.corner[which];
   const body = which==='start'
     ? `<p class="fact">${C.line}</p><div class="al-links">${orderedAirlines().map(a=>
-        `<a class="al-link${a.id===S.airline?' mine':''}" href="${CONFIG.airlineLinks[a.id]||'#'}" target="_blank" rel="noopener" data-al="${a.id}" aria-label="${escA(a.name)}${a.id===S.airline?' · '+escA(C.yours):''}" style="--al:${a.hex}">
+        `<a class="al-link${a.id===S.airline?' mine':''}" href="${escA(airlineLink(a.id))}" target="_blank" rel="noopener" data-al="${a.id}" aria-label="${escA(a.name)}${a.id===S.airline?' · '+escA(C.yours):''}" style="--al:${a.hex}">
           <img src="${a.logo}" alt="">${a.id===S.airline?`<small class="al-yours">${C.yours}</small>`:''}</a>`).join('')}</div>${wayPromoHtml()}${transitHtml()}`   /* v14 (n): logos only (the name is the link's aria-label), the chosen airline's pill */   /* v12: the promo block of the picks card; v14: + the free half-day transit tour block */
     : `<p class="fact cn-lead">${C.lead}</p><div class="cn-rows">${C.rows.map((r,i)=>`<div class="cn-row"><span class="cn-ic" aria-hidden="true">${PASS_ROW_ICONS_V14[i]||''}</span><div><b>${r.h}</b><span>${r.p}</span></div></div>`).join('')}</div><p class="cn-foot">${C.foot}</p>
        <a class="btn btn-ghost cn-pass" id="cnPass" href="${escA((CONFIG.pass&&CONFIG.pass.url)||C.url)}" target="_blank" rel="noopener">${C.cta}</a>`;   /* v14: one line, the button to CONFIG.pass.url */
