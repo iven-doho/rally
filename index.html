@@ -416,6 +416,10 @@ button#chipEntries:focus-visible{outline:2px solid var(--brand);outline-offset:2
    that keeps the row even without stretching anyone's logo. */
 .pl-mark{display:inline-flex;align-items:center;justify-content:center;width:112px;height:38px;padding:4px 8px;background:#fff;border:1px solid var(--border);border-radius:12px;}
 .pl-mark img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;}
+/* v17 (ae): the strip boxes are links — same box, a pointer, no underline, the page's keyboard focus outline */
+a.pl-mark{cursor:pointer;text-decoration:none;color:inherit;}
+a.pl-mark:focus{outline:none;}
+a.pl-mark:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
 /* On a phone the label plus three lockups is wider than the screen, so it used to wrap 2+1 —
    which reads as a hierarchy that isn't there. The three carriers are equal partners, so the
    label drops to its own line and the three stay on one row. */
@@ -1837,9 +1841,9 @@ body:not(.playing) .wrap{max-width:none;}
   </div>
   <div class="partner-strip">
     <span class="ps-lbl">Grand prizes by</span>
-    <span class="pl-mark" id="plCal"></span>
-    <span class="pl-mark" id="plEva"></span>
-    <span class="pl-mark" id="plJx"></span>
+    <a class="pl-mark" id="plCal" data-al="cal" href="#" target="_blank" rel="noopener"></a>
+    <a class="pl-mark" id="plEva" data-al="eva" href="#" target="_blank" rel="noopener"></a>
+    <a class="pl-mark" id="plJx" data-al="jx" href="#" target="_blank" rel="noopener"></a>
   </div>
 </section>
 
@@ -1921,12 +1925,12 @@ const CONFIG = {
   /* the address printed on the travel picks PNG. '' → this page's own address when served over
      http(s), or rally.feeltaiwan.com when opened from a file. (launch: 'rally.feeltaiwan.com' once the host is final) */
   siteUrl: 'https://rally.feeltaiwan.com/',
-  /* v6 r2: the START corner's three carrier buttons open these in a new window. Placeholders — the
-     market team replaces them with each carrier's SFO offer page + UTM. Keys are AIRLINES ids. */
+  /* v17 (ae): each airline's US site, opened in a new window by the START (airport) card's three buttons and the board's "Grand prizes by"
+     strip (both through airlineLink(), so airlineLinksTimed below can override one for a while). Keys are AIRLINES ids. */
   airlineLinks: {
-    cal: 'https://www.china-airlines.com/',
-    eva: 'https://www.evaair.com/',
-    jx:  'https://www.starlux-airlines.com/'
+    cal: 'https://www.china-airlines.com/us/en',
+    eva: 'https://www.evaair.com/en-us/index.html',
+    jx:  'https://www.starlux-airlines.com/en-US'
   },
   /* v17 (ad): timed overrides of airlineLinks (keys = AIRLINES ids). `until` is exclusive (an ISO time with its zone); from then on the
      airlineLinks entry applies again. A missing or unparseable `until`, or an empty url, means the normal link. */
@@ -5094,6 +5098,10 @@ const ALT_NOTES_V14 = {
    Administration's free half-day tour (halfdaytour.taiwan.net.tw, 2026-11-05: "Transit or transfer passengers with 7- to 24-hour
    layovers"; free; "Taiwan Free half-day tour"). */
 const CORNERS_TEXT_V14 = {
+  /* v17 (ae): the workbook's airport-card link IDs follow CONFIG.airlineLinks (the three US sites; the (ad) sale override is CONFIG.airlineLinksTimed) */
+  'CONFIG.airlineLinks.cal':     'https://www.china-airlines.com/us/en',
+  'CONFIG.airlineLinks.eva':     'https://www.evaair.com/en-us/index.html',
+  'CONFIG.airlineLinks.jx':      'https://www.starlux-airlines.com/en-US',
   /* v14 (p, Iven's approved card, assets/pass.html): kicker, title, lead, three rows (h + p), foot, the button. The ↗ after the button text is CSS.
      The pass-by toast keeps v11's three lines (COPY.corner.pass.lines). Facts as checked in (m): Taipei Times 2026-04-01 (3-day HSR or TRA, one
      MRT system, one scenic route — Tourist Shuttles to Sun Moon Lake, Alishan, Kenting, Cingjing; the HSR version for international tourists). */
@@ -6529,7 +6537,12 @@ function initCheckin(){
   S.token='ob_hiking';
   /* footer partner strip uses the same official lockups */
   AIRLINES.forEach(a=>{ const m=document.getElementById('pl'+a.id.charAt(0).toUpperCase()+a.id.slice(1));
-    if(m) m.innerHTML=`<img src="${a.logo}" alt="${a.name}">`; });
+    if(m){ m.innerHTML=`<img src="${a.logo}" alt="${a.name}">`; m.setAttribute('aria-label', a.name); m.href=airlineLink(a.id); } });
+  /* v17 (ae): the strip's links — the href re-resolved at the moment of use (a tab left open past an airlineLinksTimed cut-off), airline_click as the airport card + placement */
+  { const st=document.querySelector('.partner-strip');
+    if(st){ const fresh=()=>st.querySelectorAll('a.pl-mark[data-al]').forEach(m=>{ const u=airlineLink(m.dataset.al); if(m.getAttribute('href')!==u) m.href=u; });
+      ['pointerdown','mousedown','touchstart','focusin','keydown','mouseover','click','auxclick','contextmenu'].forEach(ev=>st.addEventListener(ev, fresh, {capture:true, passive:true}));
+      st.addEventListener('click', e=>{ const m=e.target.closest && e.target.closest('a.pl-mark[data-al]'); if(m) track('airline_click',{airline:m.dataset.al, placement:'board_strip'}); }); } }
   const aw=document.getElementById('airlines');
   AIRLINES.forEach(a=>{
     const b=document.createElement('div'); b.className='tok'; b.style.setProperty('--al',a.hex);
