@@ -1551,6 +1551,20 @@ p.revisit.rv-pp{margin:8px 0 0;font-size:11.5px;}
 
 /* ── v14 (o): the promo placeholder — one bold line in the brand orange (as the code was) ── */
 .way-promo .wp-line.wp-ph{font-weight:800;color:var(--brand);}
+/* v17 (ag): the airline offers — three captions under the START card's logo buttons (same three columns), and the picks card's offer block */
+.modal.corner-start .al-offers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:9px 0 0;}
+.modal.corner-start .al-offer{display:block;text-align:center;text-decoration:none;color:var(--text-dark);font-size:10px;line-height:1.25;text-wrap:balance;}
+.modal.corner-start .al-offer b{display:block;font-weight:800;color:var(--al);}
+.modal.corner-start .al-offer span{display:block;font-weight:600;color:var(--text-mid);}
+.modal.corner-start a.al-offer:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:4px;}
+@media (min-width:700px){ .modal.corner-start .al-offer{font-size:10.5px;} }
+/* 360×560 (the card already fills the screen there): the row sits closer to the buttons, still below the "Your airline" pill; no scroll */
+@media(max-width:620px) and (max-height:600px){ .modal.corner-start .al-offers{margin-top:3px;} .modal.corner-start .al-offer{line-height:1.2;} }
+.way-promo.way-offer .wp-line a{text-decoration:none;color:var(--text-dark);}
+/* the picks card at ≤ 600 px tall (360×560) has no room left: the offer block is not shown there (it is on the START card), so the card is as before */
+@media(max-width:620px) and (max-height:600px){ .modal.way .way-offer{display:none;} }
+/* the same on a desktop window under 840 px tall (the picks card with the block is 770 px): not shown, so the card is as before */
+@media(min-width:621px) and (max-height:839px){ .modal.way .way-offer{display:none;} }
 /* ── v14 (p, Iven's approved card assets/pass.html + pass-mock.png): the Taiwan PASS card — one layout on phones and desktop: the gold
    band with the PASS artwork, kicker, title, lead, three beige rows (gold icon square, heading, text), the foot line, the ghost
    "See the passes ↗" above the solid Continue/Close ── */
@@ -1935,7 +1949,15 @@ const CONFIG = {
   /* v17 (ad): timed overrides of airlineLinks (keys = AIRLINES ids). `until` is exclusive (an ISO time with its zone); from then on the
      airlineLinks entry applies again. A missing or unparseable `until`, or an empty url, means the normal link. */
   airlineLinksTimed: {
-    cal: {url: 'https://northamerica.china-airlines.com/2026-black-friday-sale_en/', until: '2026-12-02T00:00:00-08:00'}   /* Iven: the Black Friday sale, through Dec 1 PT */
+    cal: {url: 'https://northamerica.china-airlines.com/2026-black-friday-sale_en/', until: '2026-12-02T00:00:00-08:00'},   /* Iven: the Black Friday sale, through Dec 1 PT */
+    jx:  {url: 'https://www.starlux-airlines.com/flights/en-us/', until: '2026-12-02T00:00:00-08:00'}   /* v17 (ag): the Black Friday Promotion page, through Dec 1 PT */
+  },
+  /* v17 (ag): each airline's offer (no promo codes). Shown while now < `until` (exclusive): head / sub under the airline's button on the
+     START card, line / note on the picks card for the airline chosen at check-in; url opens in a new window. Keys are AIRLINES ids. */
+  airlineOffers: {
+    cal: {head: 'Black Friday Sale', sub: 'Book by Dec 1', line: 'Black Friday Sale', note: 'Book by Dec 1.', url: 'https://northamerica.china-airlines.com/2026-black-friday-sale_en/', until: '2026-12-02T00:00:00-08:00'},
+    eva: {head: 'Free Wi-Fi', sub: 'across all cabins', line: 'EVA Airways offers free Wi-Fi across all cabins!', note: '', url: 'https://www.evaair.com/en-us/fly-prepare/flying-with-eva/inflight-entertainment-service/connectivity-and-power/', until: '2026-12-02T00:00:00-08:00'},
+    jx:  {head: 'Black Friday Promotion', sub: 'Book by Dec 1', line: 'Black Friday Promotion', note: 'Book by Dec 1.', url: 'https://www.starlux-airlines.com/flights/en-us/', until: '2026-12-02T00:00:00-08:00'}
   },
   /* v11: the picks card shows the promo code of the airline chosen at check-in. Placeholders until Iven supplies the real
      codes; when url is set the airline's name links to it (a new window). Keys are AIRLINES ids, as airlineLinks. */
@@ -1951,6 +1973,36 @@ function airlineLink(id, now = Date.now()){
   if (t && typeof t.url === 'string' && t.url && typeof t.until === 'string') { const u = Date.parse(t.until); if (Number.isFinite(u) && now < u) return t.url; }
   return (CONFIG.airlineLinks && CONFIG.airlineLinks[id]) || '#';
 }
+/* v17 (ag), Iven 2026-11-20: the airlines have no promo codes; each has an offer instead. airlineOffer(id, now) = CONFIG.airlineOffers[id]
+   while now < its `until` (exclusive, an ISO time with its zone), else null: a missing / unparseable `until` shows nothing. offersHtml() = the
+   START (airport) card's row of three captions under the three logo buttons (same columns; an airline without a live offer leaves its column
+   empty; no live offer at all → no row). offerPromoHtml() = the picks card's block for the airline chosen at check-in (the old promo block's
+   box). The saved picks PNG carries no offer (wayPromo() stays null). A click sends airline_click {airline, placement}. */
+function airlineOffer(id, now = Date.now()){
+  const o = CONFIG.airlineOffers && CONFIG.airlineOffers[id];
+  if (!o || typeof o.until !== 'string' || typeof o.url !== 'string' || !o.url) return null;
+  const u = Date.parse(o.until);
+  return (Number.isFinite(u) && now < u) ? o : null;
+}
+function offersHtml(){
+  const rows = orderedAirlines().map(a => [a, airlineOffer(a.id)]);
+  if (!rows.some(r => r[1])) return '';
+  return `<div class="al-offers">${rows.map(([a, o]) => o
+    ? `<a class="al-offer" href="${escA(o.url)}" target="_blank" rel="noopener" data-al="${a.id}" style="--al:${a.hex}"><b>${escA(o.head)}</b><span>${escA(o.sub)}</span></a>`
+    : '<span class="al-offer" aria-hidden="true"></span>').join('')}</div>`;
+}
+function offerPromoHtml(){
+  const al = AIRLINES.find(a => a.id === S.airline), o = al && airlineOffer(al.id);
+  if (!o) return '';
+  return `<div class="way-promo way-offer" data-al="${al.id}"><img class="wp-logo" src="${al.logo}" alt="${escA(al.name)}"><div class="wp-tx">` +
+    `<p class="wp-line"><a href="${escA(o.url)}" target="_blank" rel="noopener">${escA(o.line)} ↗</a></p>${o.note ? `<p class="wp-sub">${escA(o.note)}</p>` : ''}</div></div>`;
+}
+document.addEventListener('click', e => {
+  const a = e.target && e.target.closest && e.target.closest('a.al-offer[data-al], .way-offer[data-al] a');
+  if (!a) return;
+  const start = a.classList.contains('al-offer');
+  track('airline_click', {airline: (start ? a : a.closest('.way-offer')).dataset.al, placement: start ? 'start_offer' : 'picks_offer'});
+});
 /* v17 (ss): the preview switch (launch target only): ?preview=<CONFIG.previewKey> — or the same key kept in this tab's sessionStorage —
    plays before the opening on the '<campaign>-test' campaign (every Sheet / GA4 call, the save slot). Runs before anything reads CONFIG.campaign. */
 const PREVIEW_V17 = (() => {
@@ -6854,7 +6906,7 @@ function cornerCard(c, land){
   const body = which==='start'
     ? `<p class="fact">${C.line}</p><div class="al-links">${orderedAirlines().map(a=>
         `<a class="al-link${a.id===S.airline?' mine':''}" href="${escA(airlineLink(a.id))}" target="_blank" rel="noopener" data-al="${a.id}" aria-label="${escA(a.name)}${a.id===S.airline?' · '+escA(C.yours):''}" style="--al:${a.hex}">
-          <img src="${a.logo}" alt="">${a.id===S.airline?`<small class="al-yours">${C.yours}</small>`:''}</a>`).join('')}</div>${wayPromoHtml()}${transitHtml()}`   /* v14 (n): logos only (the name is the link's aria-label), the chosen airline's pill */   /* v12: the promo block of the picks card; v14: + the free half-day transit tour block */
+          <img src="${a.logo}" alt="">${a.id===S.airline?`<small class="al-yours">${C.yours}</small>`:''}</a>`).join('')}</div>${offersHtml()}${wayPromoHtml()}${transitHtml()}`   /* v14 (n): logos only (the name is the link's aria-label), the chosen airline's pill */   /* v12: the promo block of the picks card; v14: + the free half-day transit tour block */
     : `<p class="fact cn-lead">${C.lead}</p><div class="cn-rows">${C.rows.map((r,i)=>`<div class="cn-row"><span class="cn-ic" aria-hidden="true">${PASS_ROW_ICONS_V14[i]||''}</span><div><b>${r.h}</b><span>${r.p}</span></div></div>`).join('')}</div><p class="cn-foot">${C.foot}</p>
        <a class="btn btn-ghost cn-pass" id="cnPass" href="${escA((CONFIG.pass&&CONFIG.pass.url)||C.url)}" target="_blank" rel="noopener">${C.cta}</a>`;   /* v14: one line, the button to CONFIG.pass.url */
   const m=openModal(`${cornerHero(which)}
@@ -7218,7 +7270,7 @@ function showWay(){
       <p class="way-lbl">${P.listLabel}</p>
       <div class="way-cols"><div class="way-lcol"><ol class="way-list">${list}</ol>${w.rows.some(r=>!r.picked) ? `<p class="way-legend"><b>＋</b> ${P.suggested}</p>` : ''}</div>${wayMapHtml(w)}</div>
       <p class="way-note">${w.intro}</p>
-      ${wayPromoHtml()}${revisitHtml('way')}
+      ${wayPromoHtml()}${offerPromoHtml()}${revisitHtml('way')}
     </div>
     <div class="md-foot" style="padding-top:6px"><button class="btn" id="wySave">${P.download}</button>
       <p class="pick-skip"><a id="wyClose" role="button" tabindex="0">Close</a></p></div>`, 'way');
