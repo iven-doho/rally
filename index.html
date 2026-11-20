@@ -5585,7 +5585,9 @@ const PLACES_AF17 = {'Pier-2 Art Center': 'Fo Guang Shan'};
 const ALT_NOTES_AF17 = {'Pier-2 Art Center': {forSpace: '10 Kaohsiung Harbor City', why: 'On the board v15–v17 (ae); in v17 (af) Pier-2 joins the 10 cover (Kaohsiung Music Center & Pier-2) and Fo Guang Shan has the slot again.'}};
 const FOLDS_AF17 = {
   'Tamsui — from Old Street bites to harbor sunset': {ops: ['Climb a mountain before breakfast', 'Wander along Old Street, taste local flavors, watch the boats, and chase the golden hour', 'Soak in hot springs beside sulfur vents', 'Explore a forest railway above the clouds'], a: 1},   /* Iven: option B */
-  'Fo Guang Shan': {ops: ['A lighthouse', 'A golden pagoda', "One of the world's tallest seated Buddhas", 'A giant bronze bell'], a: 2}   /* the stored A–D turned by 2 */
+  /* v17 (ah), client via Iven 2026-11-20: the question must not call the Buddha "something" — "highlight" instead; wording chosen by Iven in chat
+     (was: "Something at Fo Guang Shan can be seen from miles away. What?"). Options, answer, hint and fact unchanged. */
+  'Fo Guang Shan': {q: 'Which highlight of Fo Guang Shan can be seen from miles away?', ops: ['A lighthouse', 'A golden pagoda', "One of the world's tallest seated Buddhas", 'A giant bronze bell'], a: 2}   /* the stored A–D turned by 2 */
 };
 const META_AF17 = {
   'Cijin — the Rainbow Church and the ferry': {next: 'Fo Guang Shan', nextLine: 'From here: back across the harbor, Fo Guang Shan is about 40 minutes inland.'},
@@ -5911,7 +5913,8 @@ const TPL_ARGS_V10 = {
     delete ALTERNATES_V4[nn]; const i = kept.indexOf(nn); if (i >= 0) kept.splice(i, 1); kept.push(old); });
   board = board.map(mapAf);
   Object.entries(FOLDS_AF17).forEach(([n, x]) => { const f = FOLDS[n]; if (!f || !board.includes(n)) throw new Error('af: ' + n + ' is not on the board');
-    if (x.ops) { if (!(x.a >= 0) || x.ops.length !== 4) throw new Error('af: ' + n + ': ops without a'); f.ops = x.ops.slice(); f.a = x.a; rot[n] = 0; } });
+    if (x.ops) { if (!(x.a >= 0) || x.ops.length !== 4) throw new Error('af: ' + n + ': ops without a'); f.ops = x.ops.slice(); f.a = x.a; rot[n] = 0; }
+    if (x.q) { if (typeof x.q !== 'string' || !/\?$/.test(x.q)) throw new Error('ah: ' + n + ': q must be a question'); f.q = x.q; } });   /* v17 (ah): a question's wording */
   Object.entries(META_AF17).forEach(([n, x]) => { if (!board.includes(n)) throw new Error('af meta: ' + n + ' is not on the board'); Object.assign(FOLDS[n], x); });
   board.forEach(n => { const f = FOLDS[n]; if (f.next) f.next = mapAf(f.next); });
   Object.entries(FACT_LONG_AF17).forEach(([n, v]) => { if (!board.includes(n)) throw new Error('af factLong: ' + n); FOLDS[n].factLong = v; delete fact15[n]; });
