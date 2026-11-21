@@ -1935,7 +1935,7 @@ const CONFIG = {
   /* v15 (ee): Google Ads — id = the conversion ID 'AW-…', label = the conversion label of the "Rally check-in" action. It fires once, on a
      successful check-in; enhanced conversions send the player's email in user_data (gtag normalizes and SHA-256-hashes it before
      sending). Either gaId or ads.id alone loads gtag.js. Both '' until the Ads account has the action. */
-  ads: {id: 'AW-17323248309', label: 'sTYyCPOowLwdELWVr8RA', enhanced: false},
+  ads: {id: 'AW-17323248309', label: 'sTYyCPOowLwdELWVr8RA', enhanced: false, remarketing: false},
   /* the address printed on the travel picks PNG. '' → this page's own address when served over
      http(s), or rally.feeltaiwan.com when opened from a file. (launch: 'rally.feeltaiwan.com' once the host is final) */
   siteUrl: 'https://rally.feeltaiwan.com/',
@@ -2193,7 +2193,9 @@ if(CONFIG.gaId || (CONFIG.ads && CONFIG.ads.id)){
   gtag('js',new Date());
   const GA_DEBUG=/[?&#](debug|debug_mode)(=1|=true|&|#|$)/.test(location.href);   /* v15 (hh): ?debug → GA4 DebugView sees this browser (no extension needed) */
   if(CONFIG.gaId) gtag('config',CONFIG.gaId,Object.assign({linker:{domains:CONFIG.gaLinkDomains}}, GA_DEBUG?{debug_mode:true}:{}));
-  if(CONFIG.ads && CONFIG.ads.id) gtag('config',CONFIG.ads.id, CONFIG.ads.enhanced ? {allow_enhanced_conversions:true} : {});   /* v17 (ai): enhanced conversions only when CONFIG.ads.enhanced */
+  /* v17 (ai): the Ads tag measures the check-in conversion only — no remarketing unless CONFIG.ads.remarketing (no automatic page_view to the
+     account's audience lists, no ad-personalization signals); enhanced conversions only when CONFIG.ads.enhanced */
+  if(CONFIG.ads && CONFIG.ads.id) gtag('config',CONFIG.ads.id, Object.assign(CONFIG.ads.remarketing ? {} : {send_page_view:false, allow_ad_personalization_signals:false}, CONFIG.ads.enhanced ? {allow_enhanced_conversions:true} : {}));
 }
 /* Every event carries its campaign, so one GA4 property reports the travel show weekend and
    the annual campaign separately without needing a second property or a date-range guess. */
