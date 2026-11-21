@@ -1935,7 +1935,7 @@ const CONFIG = {
   /* v15 (ee): Google Ads — id = the conversion ID 'AW-…', label = the conversion label of the "Rally check-in" action. It fires once, on a
      successful check-in; enhanced conversions send the player's email in user_data (gtag normalizes and SHA-256-hashes it before
      sending). Either gaId or ads.id alone loads gtag.js. Both '' until the Ads account has the action. */
-  ads: {id: '', label: ''},
+  ads: {id: 'AW-17323248309', label: 'sTYyCPOowLwdELWVr8RA', enhanced: false},
   /* the address printed on the travel picks PNG. '' → this page's own address when served over
      http(s), or rally.feeltaiwan.com when opened from a file. (launch: 'rally.feeltaiwan.com' once the host is final) */
   siteUrl: 'https://rally.feeltaiwan.com/',
@@ -2193,7 +2193,7 @@ if(CONFIG.gaId || (CONFIG.ads && CONFIG.ads.id)){
   gtag('js',new Date());
   const GA_DEBUG=/[?&#](debug|debug_mode)(=1|=true|&|#|$)/.test(location.href);   /* v15 (hh): ?debug → GA4 DebugView sees this browser (no extension needed) */
   if(CONFIG.gaId) gtag('config',CONFIG.gaId,Object.assign({linker:{domains:CONFIG.gaLinkDomains}}, GA_DEBUG?{debug_mode:true}:{}));
-  if(CONFIG.ads && CONFIG.ads.id) gtag('config',CONFIG.ads.id,{allow_enhanced_conversions:true});
+  if(CONFIG.ads && CONFIG.ads.id) gtag('config',CONFIG.ads.id, CONFIG.ads.enhanced ? {allow_enhanced_conversions:true} : {});   /* v17 (ai): enhanced conversions only when CONFIG.ads.enhanced */
 }
 /* Every event carries its campaign, so one GA4 property reports the travel show weekend and
    the annual campaign separately without needing a second property or a date-range guess. */
@@ -2202,9 +2202,10 @@ function track(ev,params){ try{ if(window.gtag) gtag('event',ev,Object.assign({c
    (gtag('set','user_data') first, so GA4's user-provided data collection gets it too) */
 function adsConversion(){ try{
   if(!(CONFIG.ads && CONFIG.ads.id && CONFIG.ads.label && window.gtag)) return;
-  const email=(S.email||'').trim().toLowerCase();
-  gtag('set','user_data',{email});
-  gtag('event','conversion',{send_to: CONFIG.ads.id+'/'+CONFIG.ads.label, user_data:{email}});
+  if(typeof PREVIEW_V17!=='undefined' && PREVIEW_V17) return;   /* v17 (ai): a preview check-in is test data, not a conversion */
+  const send_to=CONFIG.ads.id+'/'+CONFIG.ads.label;
+  if(CONFIG.ads.enhanced){ const email=(S.email||'').trim().toLowerCase(); gtag('set','user_data',{email}); gtag('event','conversion',{send_to, user_data:{email}}); }
+  else gtag('event','conversion',{send_to});   /* v17 (ai): enhanced conversions off — the conversion carries no email */
 }catch(e){} }
 /* v17 (ss): the landing URL's utm_* and gclid, read once at the first load (this tab's latest landing that carried any; sessionStorage
    keeps them across a reload without the query) — getUTM() and the check-in's gclid read this, never the address bar at check-in time */
